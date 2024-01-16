@@ -1,2 +1,2 @@
 import data
-import evaluation
+from . import evaluation
