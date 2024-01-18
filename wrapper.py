@@ -18,7 +18,7 @@ class KotlinLLMEval:
             self.method_dict = None
         self.model_name = ''
         if model_name is not None:
-            _init_model(model_name = model_name, gpu_id = gpu_id)
+           self._init_model(model_name, gpu_id)
 
     def _init_model(self, model_name : str, gpu_id : int):
         pass
@@ -30,16 +30,17 @@ class KotlinLLMEval:
     def model_generate(self, problem_list, top_k = 1, max_length = 500):
         pass
 
-    def unwrap_model_output(self, answer):
+    def unwrap_model_output(self, problem_list: dict[str, dict]):
         pass
+    def method_filter(self, answer: str):
+        pass
+
     def generate(self, problem_name: str = 'multi-humaneval', top_k = 1, max_length = 500):
         if problem_name != 'multi-humaneval' and problem_name != 'mbxp':
             raise Exception('This dataset is not implemented')
         raw_problem_list = get_data(dataset=problem_name, language='kotlin')
         problem_list = self._data_unwrapper(raw_problem_list)
-        method_list = list()
-        for sample in tqdm(model_generate(problem_list, top_k, max_length)):
-            method_list.append(unwrap_model_output(sample))
+        method_list = self.model_generate(problem_list, top_k, max_length)
         file_name = f"output_{problem_name}_{self.model_name}.json"
         method_dict = dict()
         for i, key in enumerate(raw_problem_list.keys()):
@@ -49,15 +50,11 @@ class KotlinLLMEval:
         self.method_dict = method_dict
 
     def model_process(self, problem_name: str = 'multi-humaneval'):
-        with jsonlines.open(f'output_{problem_name}_{self.model_name}.jsonl', mode='w') as writer:
-            for key, value in self.method_dict.items():
-                answer_start = value.find('*/')
-                body_start = value.find('\n', answer_start + 3)
-                answer = value[body_start:]
-                generated_sample = {"task_id": key, "completion": answer, "language": "kotlin"}
-                writer.write(generated_sample)
+        pass
 
-    def evaluate(self, problem_name: str  = 'humaneval', model_outputs_jsonl: str = 'outputmulti-humaneval.jsonl', top_k=1, n_workers=8, timeout=15.0):
+    def evaluate(self, problem_name: str, model_outputs_jsonl: str, top_k=1, n_workers=8, timeout=15.0):
+        print(problem_name)
+        print('aaa')
         if problem_name == "humaneval":
             reference_file = "./data/multilingual_humaneval/HumanEval_kotlin_v1.1.jsonl"
         elif problem_name == "mbkp":
