@@ -22,7 +22,7 @@ class CausalLMEval(wrapper.KotlinLLMEval):
                 self._device = "cuda:" + str(gpu_id)
             else:
                 self._device = "cpu"
-            self.model = AutoModelForCausalLM.from_pretrained(checkpoint, trust_remote_code=True).to(self._device)
+            self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to(self._device)
 
     def method_filter(self, answer: str):
         answer_start = answer.find('/**')
@@ -36,9 +36,26 @@ class CausalLMEval(wrapper.KotlinLLMEval):
 
     def model_generate(self, problem_list, top_k = 1, max_length = 500):
         method_list = list()
-        for sample in tqdm(self.pipeline(problem_list, do_sample=True, top_k=top_k, temperature=0.1, top_p=0.95,
-                                         num_return_sequences=1, eos_token_id=self.tokenizer.eos_token_id,
-                                         max_length=max_length)):
-            answer = sample[0]['generated_text']
+        for problem in tqdm(problem_list):
+            sample = self.model.generate(problem, temperature=0.2, max_length=max_length)
+            answer = self.tokenizer.decode(sample[0])
             method_list.append(self.method_filter(answer))
         return method_list
+
+    def generate(self, problem_name: str = 'multi-humaneval', top_k = 1, max_length = 500):
+        super().generate(problem_name, top_k, max_length)
+
+    def model_process(self, problem_name: str = 'multi-humaneval'):
+        output_file = f'output_{problem_name}_{self.model_name}.jsonl'
+        with jsonlines.open(output_file, mode='w') as writer:
+            for key, value in self.method_dict.items():
+                answer_start = value.find('*/')
+                body_start = value.find('\n', answer_start + 3)
+                answer = value[body_start:]
+                generated_sample = {"task_id": key, "completion": answer, "language": "kotlin"}
+                writer.write(generated_sample)
+        return output_file
+
+    def evaluate(self, problem_name: str = 'humaneval', model_outputs_jsonl: str = 'output_multi-humaneval_Refact-1_6B-fim.jsonl',
+                     top_k=1, n_workers=8, timeout=15.0):
+        return super().evaluate(problem_name, model_outputs_jsonl, top_k, n_workers, timeout)
