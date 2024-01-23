@@ -53,8 +53,6 @@ class KotlinLLMEval:
         pass
 
     def evaluate(self, problem_name: str, model_outputs_jsonl: str, top_k=1, n_workers=8, timeout=15.0):
-        print(problem_name)
-        print('aaa')
         if problem_name == "humaneval":
             reference_file = "./data/multilingual_humaneval/HumanEval_kotlin_v1.1.jsonl"
         elif problem_name == "mbkp":
