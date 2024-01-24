@@ -25,9 +25,11 @@ class CausalLMEval(wrapper.KotlinLLMEval):
             self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to(self._device)
 
     def method_filter(self, answer: str):
-        answer_start = answer.find('/**')
-        answer_end = answer.find('/**', answer_start + 1)
-        return answer[answer_start:answer_end]
+        answer_start = answer.find('{\n')
+        answer_end = answer.find('\n}\n\n', answer_start + 1)
+        return answer[answer_start + 1:answer_end + 2]
+        # This one is for Refact. We're looking for final curly bracket at the end of method, after method body
+
 
     def _data_unwrapper(self, problem_list: dict[str, dict]):
         for key in problem_list.keys():
@@ -49,10 +51,10 @@ class CausalLMEval(wrapper.KotlinLLMEval):
         output_file = f'output_{problem_name}_{self.model_name}.jsonl'
         with jsonlines.open(output_file, mode='w') as writer:
             for key, value in self.method_dict.items():
-                answer_start = value.find('*/')
-                body_start = value.find('\n', answer_start + 3)
-                answer = value[body_start:]
-                generated_sample = {"task_id": key, "completion": answer, "language": "kotlin"}
+                # answer_start = value.find('*/')
+                # body_start = value.find('\n', answer_start + 3)
+                # answer = value[body_start:]
+                generated_sample = {"task_id": key, "completion": value, "language": "kotlin"}
                 writer.write(generated_sample)
         return output_file
 
