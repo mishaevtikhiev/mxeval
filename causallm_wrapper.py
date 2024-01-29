@@ -12,6 +12,7 @@ from mxeval.data import get_data
 class CausalLMEval(wrapper.KotlinLLMEval):
     def __init__(self, model_name = "smallcloudai/Refact-1_6B-fim", gpu_id=0, method_dict_location:str=None):
         super().__init__(model_name, gpu_id, method_dict_location)
+        self.raw_method_list = None
 
     def _init_model(self, model_name: str = "smallcloudai/Refact-1_6B-fim", gpu_id: int = 0):
         self.model_name = 'Refact'
@@ -38,10 +39,13 @@ class CausalLMEval(wrapper.KotlinLLMEval):
 
     def model_generate(self, problem_list, top_k = 1, max_length = 500):
         method_list = list()
+        raw_output = list()
         for problem in tqdm(problem_list):
             sample = self.model.generate(problem, temperature=0.2, max_length=max_length)
             answer = self.tokenizer.decode(sample[0])
             method_list.append(self.method_filter(answer))
+            raw_output.append(answer)
+        self.raw_method_list = raw_output
         return method_list
 
     def generate(self, problem_name: str = 'multi-humaneval', top_k = 1, max_length = 500):
