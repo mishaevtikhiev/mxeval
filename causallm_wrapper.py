@@ -42,6 +42,11 @@ class CausalLMEval(wrapper.KotlinLLMEval):
         raw_output = list()
         for problem in tqdm(problem_list):
             sample = self.model.generate(problem, temperature=0.2, max_length=max_length)
+            if len(sample[0]) < 3: # say no to <endoftext> instead of answer
+                i = 0
+                while len(sample[0]) < 3 & i < 5:
+                    sample = self.model.generate(problem, temperature=0.2, max_length=max_length)
+                    i += 1
             answer = self.tokenizer.decode(sample[0])
             method_list.append(self.method_filter(answer))
             raw_output.append(answer)
@@ -65,3 +70,18 @@ class CausalLMEval(wrapper.KotlinLLMEval):
     def evaluate(self, problem_name: str = 'humaneval', model_outputs_jsonl: str = 'output_multi-humaneval_Refact-1_6B-fim.jsonl',
                      top_k=1, n_workers=8, timeout=15.0):
         return super().evaluate(problem_name, model_outputs_jsonl, top_k, n_workers, timeout)
+
+    def multi_evaluate(self, iterations: int = 1, problem_name: str = 'humaneval', top_k = 1, max_length = 500, model_outputs_jsonl: str = 'output_multi-humaneval_Refact-1_6B-fim.jsonl', n_workers=8, timeout=15.0):
+        for i in range(iterations):
+            if problem_name == 'humaneval':
+                long_name = 'multi-humaneval'
+            else:
+                long_name = 'mbkp'
+            self.generate(long_name, top_k, max_length)
+            self.model_process(long_name)
+            print(f"Iteration {i+1} out of {iterations+1}")
+            print(self.evaluate(problem_name, model_outputs_jsonl, top_k, n_workers, timeout))
+        mean_scores = dict()
+        for (key, value) in self.scores.items():
+            mean_scores[key] = sum(self.scores[key]) / len(self.scores[key])
+        return mean_scores

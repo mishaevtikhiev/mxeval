@@ -10,32 +10,38 @@ from mxeval.data import get_data
 
 
 class KotlinLLMEval:
-    def __init__(self, model_name = "codellama/CodeLlama-7b-hf", gpu_id=0, method_dict_location:str=None):
+    def __init__(self, model_name="codellama/CodeLlama-7b-hf", gpu_id=0, method_dict_location: str = None):
         if method_dict_location is not None:
             with open(method_dict_location) as f:
                 self.method_dict = json.load(f)
         else:
             self.method_dict = None
         self.model_name = ''
+        self.scores = dict()
+        self.scores["pass_rate"] = []
+        self.scores["test_fail_rate"] = []
+        self.scores["compilation_error_rate"] = []
+        self.scores["out_of_time_rate"] = []
         if model_name is not None:
-           self._init_model(model_name, gpu_id)
+            self._init_model(model_name, gpu_id)
 
-    def _init_model(self, model_name : str, gpu_id : int):
+    def _init_model(self, model_name: str, gpu_id: int):
         pass
 
     def _data_unwrapper(self, problem_list: dict[str, dict]):
         for key in problem_list.keys():
             yield problem_list[key]['prompt']
 
-    def model_generate(self, problem_list, top_k = 1, max_length = 500):
+    def model_generate(self, problem_list, top_k=1, max_length=500):
         pass
 
     def unwrap_model_output(self, problem_list: dict[str, dict]):
         pass
+
     def method_filter(self, answer: str):
         pass
 
-    def generate(self, problem_name: str = 'multi-humaneval', top_k = 1, max_length = 500):
+    def generate(self, problem_name: str = 'multi-humaneval', top_k=1, max_length=500):
         if problem_name != 'multi-humaneval' and problem_name != 'mbxp':
             raise Exception('This dataset is not implemented')
         raw_problem_list = get_data(dataset=problem_name, language='kotlin')
@@ -85,7 +91,7 @@ class KotlinLLMEval:
                 elif "timed out" in obj["result"]:
                     out_of_time_samples += 1
                 else:
-                    #raise Exception("Unexpected behavior from mxeval")
+                    # raise Exception("Unexpected behavior from mxeval")
                     print("Unexpected behavior from mxeval")
                     print(obj["result"])
 
@@ -93,15 +99,12 @@ class KotlinLLMEval:
         test_fail_rate = round(100.0 * test_failed_samples / total_samples, 2)
         compilation_error_rate = round(100.0 * compilation_error_samples / total_samples, 2)
         out_of_time_rate = round(100 * out_of_time_samples / total_samples, 2)
-        self.method_dict["pass_rate"] = pass_rate
-        self.method_dict["test_fail_rate"] = test_fail_rate
-        self.method_dict["compilation_error_rate"] = compilation_error_rate
-        self.method_dict["out_of_time_rate"] = out_of_time_rate
+        rates_dict = {"pass_rate": pass_rate, "test_fail_rate": test_fail_rate,
+                      "compilation_error_rate": compilation_error_rate, "out_of_time_rate": out_of_time_rate}
+        tmp_dict = self.method_dict  # so we can run eval on method_dict if needed, and dump the tmp_dict
+        for key, value in rates_dict.items():
+            tmp_dict[key] = value
+            self.scores[key].append(value)
         with open(f"output_{problem_name}_{self.model_name}.json", 'w') as f:
-            json.dump(self.method_dict, f)
+            json.dump(tmp_dict, f)
         return f"pass rate: {pass_rate}, test fail rate: {test_fail_rate}, compilation error rate: {compilation_error_rate}, out of time rate: {out_of_time_rate}"
-
-
-
-
-
