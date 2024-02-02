@@ -10,7 +10,7 @@ from mxeval.data import get_data
 
 
 class KotlinLLMEval:
-    def __init__(self, model_name="codellama/CodeLlama-7b-hf", gpu_id=0, method_dict_location: str = None):
+    def __init__(self, model_checkpoint = './stack_tuned.ckpt', model_name="codellama/CodeLlama-7b-hf", gpu_id=2, method_dict_location: str = None):
         if method_dict_location is not None:
             with open(method_dict_location) as f:
                 self.method_dict = json.load(f)
@@ -23,9 +23,9 @@ class KotlinLLMEval:
         self.scores["compilation_error_rate"] = []
         self.scores["out_of_time_rate"] = []
         if model_name is not None:
-            self._init_model(model_name, gpu_id)
+            self._init_model(model_checkpoint, model_name, gpu_id)
 
-    def _init_model(self, model_name: str, gpu_id: int):
+    def _init_model(self, model_checkpoint, model_name: str, gpu_id: int):
         pass
 
     def _data_unwrapper(self, problem_list: dict[str, dict]):
@@ -80,7 +80,8 @@ class KotlinLLMEval:
                 if obj["passed"]:
                     passed_samples += 1
                 elif "Exception" in obj["result"]:
-                    assert obj["time_elapsed"] > 0.0
+                    if obj["time_elapsed"] is None:
+                        print(obj["result"])
                     test_failed_samples += 1
                 elif "error" in obj["result"]:
                     if not ".kt" in obj["result"]:

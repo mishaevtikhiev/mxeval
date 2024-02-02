@@ -10,27 +10,32 @@ from tqdm import tqdm
 from mxeval.data import get_data
 
 class CausalLMEval(wrapper.KotlinLLMEval):
-    def __init__(self, model_name = "smallcloudai/Refact-1_6B-fim", gpu_id=0, method_dict_location:str=None):
-        super().__init__(model_name, gpu_id, method_dict_location)
+    def __init__(self, model_checkpoint: str = None, model_name = "smallcloudai/Refact-1_6B-fim", gpu_id=2, method_dict_location:str=None):
+        super().__init__(model_checkpoint, model_name, gpu_id, method_dict_location)
         self.raw_method_list = None
 
-    def _init_model(self, model_name: str = "smallcloudai/Refact-1_6B-fim", gpu_id: int = 0):
+    def _init_model(self, model_checkpoint: str = None, model_name: str = "smallcloudai/Refact-1_6B-fim", gpu_id: int = 2):
         self.model_name = 'Refact'
         if model_name is not None:
             self.model_name = model_name.split('/')[-1]
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.tokenizer.pad_token = self.tokenizer.eos_token
             if torch.cuda.is_available():
                 self._device = "cuda:" + str(gpu_id)
             else:
                 self._device = "cpu"
-            self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to(self._device)
+            if model_checkpoint is not None:
+                self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to(self._device)
+                checkpoint = torch.load(model_checkpoint)
+                self.model.load_state_dict(checkpoint)
+            else:
+                self.model = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True).to(self._device)
 
     def method_filter(self, answer: str):
         answer_start = answer.find('{\n')
         answer_end = answer.find('\n}\n\n', answer_start + 1)
         return answer[answer_start + 1:answer_end + 2]
         # This one is for Refact. We're looking for final curly bracket at the end of method, after method body
-
 
     def _data_unwrapper(self, problem_list: dict[str, dict]):
         for key in problem_list.keys():

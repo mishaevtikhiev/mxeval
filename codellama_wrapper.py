@@ -11,7 +11,7 @@ from mxeval.data import get_data
 
 class CodellamaEval(wrapper.KotlinLLMEval):
 
-    def __init__(self, model_name = "codellama/CodeLlama-7b-hf", gpu_id=0, method_dict_location:str=None):
+    def __init__(self, model_name = "codellama/CodeLlama-7b-hf", gpu_id=2, method_dict_location:str=None):
         super().__init__(model_name, gpu_id, method_dict_location)
 
     def _init_model(self, model_name: str = "codellama/CodeLlama-7b-hf", gpu_id: int = 0):
@@ -19,6 +19,7 @@ class CodellamaEval(wrapper.KotlinLLMEval):
         if model_name is not None:
             self.model_name = model_name.split('/')[-1]
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            self.tokenizer.pad_token = self.tokenizer.eos_token
             if torch.cuda.is_available():
                 self._device = "cuda:" + str(gpu_id)
             else:
